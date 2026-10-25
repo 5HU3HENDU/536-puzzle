@@ -8,24 +8,25 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    font-family: Georgia, "Times New Roman", serif;
     background: #FBF8F0; color: #141310; line-height: 1.6;
   }
   .wrap { width: min(94vw, 720px); margin: 0 auto; padding: 28px 0 64px; }
   header { text-align: center; padding: 12px 8px 4px; border-bottom: 3px double #141310; margin-bottom: 8px; }
   header h1 { font-family: Georgia, serif; font-size: 42px; line-height: 1.15; }
-  header p { margin-top: 8px; font-size: 16px; color: #5c6653; }
+  header p { margin-top: 8px; font-size: 15px; color: #5c6653; font-variant: small-caps; letter-spacing: 0.06em; }
   .progress { text-align: center; font-size: 15px; color: #5c6653; padding: 14px 0 4px; }
   .section { margin-top: 26px; }
-  .section h2 { font-family: Georgia, serif; font-size: 22px; border-bottom: 1px solid #d8d2c2; padding-bottom: 4px; margin-bottom: 6px; }
-  .section .seccount { font-size: 13px; color: #7a7f72; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .section h2 { font-family: Georgia, serif; font-size: 22px; border-bottom: 1px solid #d8d2c2; padding-bottom: 4px; margin-bottom: 6px; font-variant: small-caps; letter-spacing: 0.05em; }
+  .section .seccount { font-size: 13px; color: #7a7f72; }
+  .ornament { text-align: center; color: #8a8f82; font-size: 18px; margin: 28px 0 0; }
   .puzzle-row {
     display: flex; gap: 10px; align-items: baseline; width: 100%; text-align: left;
     background: none; border: none; border-bottom: 1px solid #ece7d8; cursor: pointer;
     font-family: inherit; font-size: 16px; color: #141310; padding: 11px 4px;
   }
   .puzzle-row:hover { background: #f3efe2; }
-  .puzzle-row .num { font-family: Georgia, serif; color: #7a7f72; min-width: 34px; }
+  .puzzle-row .num { font-family: Georgia, serif; color: #7a7f72; min-width: 52px; }
   .puzzle-row .tick { margin-left: auto; color: #3d7a3d; font-weight: 700; min-width: 22px; text-align: right; }
   .puzzle-row .tick.no { color: transparent; }
   footer { text-align: center; font-size: 13px; color: #7a7f72; margin-top: 36px; padding: 0 16px; border-top: 3px double #141310; padding-top: 16px; }
@@ -37,7 +38,8 @@
   .solved-badge { display: inline-block; margin-top: 8px; color: #3d7a3d; font-weight: 700; font-size: 15px; }
   .diagram { text-align: center; margin: 8px 0 16px; }
   .diagram svg { max-width: 100%; height: auto; }
-  .puzzle-text { font-size: 18px; margin-bottom: 20px; }
+  .puzzle-text { font-family: Georgia, serif; font-size: 19px; margin-bottom: 20px; }
+  .puzzle-text::first-letter { font-size: 2.4em; float: left; line-height: 0.85; padding-right: 8px; padding-top: 2px; }
   .answer { margin: 16px 0; }
   .answer input {
     width: 100%; padding: 14px 18px; font-size: 18px; border: 1px solid #d8d2c2;
@@ -71,8 +73,7 @@
     <div class="progress" id="progress"></div>
     <div id="menu"></div>
     <footer>
-      Puzzles after Henry Ernest Dudeney, retold in our own words.<br>
-      Solutions are at the back of the book — open one any time; reading it does not mark a puzzle solved.
+      Puzzles after Henry Ernest Dudeney, retold in our own words.
     </footer>
   </div>
 
@@ -318,14 +319,15 @@ function renderMenu() {
   var totalSolved = PUZZLES.filter(function (p) { return solved[p.id]; }).length;
   document.getElementById("progress").textContent = "Solved " + totalSolved + " of " + PUZZLES.length;
   var html = "";
-  sections.forEach(function (sec) {
+  sections.forEach(function (sec, si) {
     var list = PUZZLES.filter(function (p) { return p.section === sec; });
     var sCount = list.filter(function (p) { return solved[p.id]; }).length;
+    if (si > 0) html += '<div class="ornament">❦</div>';
     html += '<div class="section"><h2>' + sec + ' <span class="seccount">· ' + sCount + " of " + list.length + " solved</span></h2>";
     list.forEach(function (p) {
       var n = PUZZLES.indexOf(p) + 1;
       html += '<button type="button" class="puzzle-row" data-i="' + (n - 1) + '">'
-        + '<span class="num">' + n + '.</span><span>' + p.title + '</span>'
+        + '<span class="num">No. ' + n + '</span><span>' + p.title + '</span>'
         + '<span class="tick' + (solved[p.id] ? "" : " no") + '">✓</span></button>';
     });
     html += "</div>";
@@ -344,7 +346,7 @@ function showPuzzle(i) {
   var n = i + 1;
   document.getElementById("menu-view").style.display = "none";
   document.getElementById("puzzle-view").style.display = "block";
-  var html = '<div class="puzzle-head"><div class="sec">' + p.section + " · Puzzle " + n + " of " + PUZZLES.length + "</div>"
+  var html = '<div class="puzzle-head"><div class="sec">' + p.section + " · Puzzle No. " + n + " of " + PUZZLES.length + "</div>"
     + "<h2>" + p.title + "</h2>"
     + (isSolved(p.id) ? '<span class="solved-badge">✓ Solved</span>' : "") + "</div>";
   if (p.diagram) html += '<div class="diagram">' + diagramHTML(p.diagram) + "</div>";
@@ -352,18 +354,13 @@ function showPuzzle(i) {
     + '<div class="answer"><input type="text" id="ans" inputmode="' + (p.input === "decimal" ? "decimal" : "text")
     + '" placeholder="Type your answer…" autocomplete="off"></div>'
     + '<button type="button" class="btn" id="check-btn">Check answer</button>'
-    + '<button type="button" class="btn secondary" id="sol-btn">Solution</button>'
-    + '<div class="msg" id="msg"></div>'
-    + '<div class="solution" id="sol-box"><h3>Solution</h3><p>' + p.solution + "</p></div>";
+    + '<div class="msg" id="msg"></div>';
   document.getElementById("puzzle-box").innerHTML = html;
   document.getElementById("prev-btn").style.visibility = i > 0 ? "visible" : "hidden";
   document.getElementById("next-btn").style.visibility = i < PUZZLES.length - 1 ? "visible" : "hidden";
   document.getElementById("check-btn").addEventListener("click", checkCurrent);
   document.getElementById("ans").addEventListener("keydown", function (e) {
     if (e.key === "Enter") checkCurrent();
-  });
-  document.getElementById("sol-btn").addEventListener("click", function () {
-    document.getElementById("sol-box").classList.toggle("open");
   });
   window.scrollTo(0, 0);
 }

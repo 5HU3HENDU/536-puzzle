@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>536 Puzzles</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    background: #FBF8F0; color: #141310; line-height: 1.6;
+  }
+  .wrap { width: min(94vw, 720px); margin: 0 auto; padding: 28px 0 64px; }
+  header { text-align: center; padding: 12px 8px 4px; border-bottom: 3px double #141310; margin-bottom: 8px; }
+  header h1 { font-family: Georgia, serif; font-size: 42px; line-height: 1.15; }
+  header p { margin-top: 8px; font-size: 16px; color: #5c6653; }
+  .progress { text-align: center; font-size: 15px; color: #5c6653; padding: 14px 0 4px; }
+  .section { margin-top: 26px; }
+  .section h2 { font-family: Georgia, serif; font-size: 22px; border-bottom: 1px solid #d8d2c2; padding-bottom: 4px; margin-bottom: 6px; }
+  .section .seccount { font-size: 13px; color: #7a7f72; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .puzzle-row {
+    display: flex; gap: 10px; align-items: baseline; width: 100%; text-align: left;
+    background: none; border: none; border-bottom: 1px solid #ece7d8; cursor: pointer;
+    font-family: inherit; font-size: 16px; color: #141310; padding: 11px 4px;
+  }
+  .puzzle-row:hover { background: #f3efe2; }
+  .puzzle-row .num { font-family: Georgia, serif; color: #7a7f72; min-width: 34px; }
+  .puzzle-row .tick { margin-left: auto; color: #3d7a3d; font-weight: 700; min-width: 22px; text-align: right; }
+  .puzzle-row .tick.no { color: transparent; }
+  footer { text-align: center; font-size: 13px; color: #7a7f72; margin-top: 36px; padding: 0 16px; border-top: 3px double #141310; padding-top: 16px; }
+  .back { display: inline-block; font-size: 15px; color: #5c7a4d; text-decoration: none; margin: 6px 0 14px; }
+  .back:hover { text-decoration: underline; }
+  .puzzle-head { border-bottom: 3px double #141310; padding-bottom: 10px; margin-bottom: 16px; }
+  .puzzle-head .sec { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f72; }
+  .puzzle-head h2 { font-family: Georgia, serif; font-size: 28px; margin-top: 2px; }
+  .solved-badge { display: inline-block; margin-top: 8px; color: #3d7a3d; font-weight: 700; font-size: 15px; }
+  .diagram { text-align: center; margin: 8px 0 16px; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .puzzle-text { font-size: 18px; margin-bottom: 20px; }
+  .answer { margin: 16px 0; }
+  .answer input {
+    width: 100%; padding: 14px 18px; font-size: 18px; border: 1px solid #d8d2c2;
+    border-radius: 12px; background: #fffdf8; outline: none; font-family: inherit;
+  }
+  .answer input:focus { border-color: #5c7a4d; }
+  .btn {
+    background: #141310; color: #FBF8F0; border: none; border-radius: 999px;
+    padding: 12px 26px; font-size: 16px; cursor: pointer; margin: 4px 6px 4px 0; font-family: inherit;
+  }
+  .btn.secondary { background: #FBF8F0; color: #141310; border: 1px solid #141310; }
+  .msg { font-size: 16px; margin: 12px 0; min-height: 26px; }
+  .msg.ok { color: #3d7a3d; font-weight: 700; }
+  .msg.no { color: #b03a2e; }
+  .solution {
+    display: none; background: #fff8dd; border: 1px solid #e3d49a; border-radius: 14px;
+    padding: 16px 18px; font-size: 16px; margin: 16px 0;
+  }
+  .solution.open { display: block; }
+  .solution h3 { font-family: Georgia, serif; font-size: 19px; margin-bottom: 6px; }
+  .nav { display: flex; justify-content: space-between; margin-top: 28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="menu-view">
+    <header>
+      <h1>536 Puzzles</h1>
+      <p>After Henry Ernest Dudeney, retold in plain words.<br>Type the answer. A tick marks every puzzle you solve.</p>
+    </header>
+    <div class="progress" id="progress"></div>
+    <div id="menu"></div>
+    <footer>
+      Puzzles after Henry Ernest Dudeney, retold in our own words.<br>
+      Solutions are at the back of the book — open one any time; reading it does not mark a puzzle solved.
+    </footer>
+  </div>
+
+  <div id="puzzle-view" style="display:none">
+    <a class="back" href="#" id="back-link">← All puzzles</a>
+    <div id="puzzle-box"></div>
+    <div class="nav">
+      <button type="button" class="btn secondary" id="prev-btn">← Previous</button>
+      <button type="button" class="btn secondary" id="next-btn">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Progress (saved only on this phone) ---------- */
+function loadSolved() {
+  try { return JSON.parse(localStorage.getItem("p536Solved") || "{}"); } catch (e) { return {}; }
+}
+function isSolved(id) { return !!loadSolved()[id]; }
+function markSolved(id) {
+  var s = loadSolved(); s[id] = true;
+  try { localStorage.setItem("p536Solved", JSON.stringify(s)); } catch (e) {}
+}
+
+/* ---------- Answer checking: tolerant, but never guessing ---------- */
+function norm(s) {
+  return String(s).toLowerCase().replace(/,/g, "").replace(/\s+/g, "");
+}
+function numVal(s) {
+  var m = s.match(/^(-?\d+(?:\.\d+)?)\s*\/\s*(-?\d+(?:\.\d+)?)$/);
+  if (m) return parseFloat(m[1]) / parseFloat(m[2]);
+  if (/^-?\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  return null;
+}
+var UNITS = ["feet", "foot", "miles", "mile", "hours", "hour", "days", "day", "seconds", "second", "minutes", "minute", "inches", "inch", "years", "year", "old", "amounts", "amount"];
+function stripUnits(s) {
+  var out = s;
+  UNITS.forEach(function (u) { out = out.split(u).join(""); });
+  return out;
+}
+function checkAnswer(input, accepted) {
+  var n = norm(input);
+  if (!n) return false;
+  for (var i = 0; i < accepted.length; i++) {
+    var a = norm(accepted[i]);
+    if (n === a) return true;
+    var v1 = numVal(n), v2 = numVal(a);
+    if (v1 !== null && v2 !== null && Math.abs(v1 - v2) < 0.01) return true;
+    var aStripped = stripUnits(a);
+    if (aStripped !== a) {
+      if (n === aStripped) return true;
+      var v3 = numVal(aStripped);
+      if (v1 !== null && v3 !== null && Math.abs(v1 - v3) < 0.01) return true;
+    }
+  }
+  var stripped = stripUnits(n);
+  if (stripped !== n && stripped) return checkAnswer(stripped, accepted);
+  return false;
+}
+
+/* ---------- Diagrams: small line drawings, drawn from the puzzle data ---------- */
+function gridSVG(cols, rows) {
+  var s = 34, w = cols * s + 20, h = rows * s + 20, out = "";
+  out += '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" xmlns="http://www.w3.org/2000/svg">';
+  for (var c = 0; c <= cols; c++) out += '<line x1="' + (10 + c * s) + '" y1="10" x2="' + (10 + c * s) + '" y2="' + (10 + rows * s) + '" stroke="#141310" stroke-width="1.5"/>';
+  for (var r = 0; r <= rows; r++) out += '<line x1="10" y1="' + (10 + r * s) + '" x2="' + (10 + cols * s) + '" y2="' + (10 + r * s) + '" stroke="#141310" stroke-width="1.5"/>';
+  return out + "</svg>";
+}
+function dotsSVG(cols, rows) {
+  var s = 34, w = cols * s + 20, h = rows * s + 20, out = "";
+  out += '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" xmlns="http://www.w3.org/2000/svg">';
+  for (var c = 0; c < cols; c++) for (var r = 0; r < rows; r++)
+    out += '<circle cx="' + (10 + c * s) + '" cy="' + (10 + r * s) + '" r="4" fill="#141310"/>';
+  return out + "</svg>";
+}
+function boardSVG() {
+  var s = 34, out = '<svg viewBox="0 0 292 292" width="292" xmlns="http://www.w3.org/2000/svg">';
+  for (var c = 0; c < 8; c++) for (var r = 0; r < 8; r++)
+    if ((c + r) % 2 === 0) out += '<rect x="' + (10 + c * s) + '" y="' + (10 + r * s) + '" width="' + s + '" height="' + s + '" fill="#141310" opacity="0.85"/>';
+  out += '<rect x="10" y="10" width="272" height="272" fill="none" stroke="#141310" stroke-width="2"/>';
+  return out + "</svg>";
+}
+function triangleSVG() {
+  return '<svg viewBox="0 0 300 260" width="300" xmlns="http://www.w3.org/2000/svg">'
+    + '<line x1="150" y1="10" x2="20" y2="240" stroke="#141310" stroke-width="2"/>'
+    + '<line x1="150" y1="10" x2="280" y2="240" stroke="#141310" stroke-width="2"/>'
+    + '<line x1="20" y1="240" x2="280" y2="240" stroke="#141310" stroke-width="2"/>'
+    + '<line x1="85" y1="125" x2="215" y2="125" stroke="#141310" stroke-width="1.5"/>'
+    + '<line x1="85" y1="125" x2="150" y2="240" stroke="#141310" stroke-width="1.5"/>'
+    + '<line x1="215" y1="125" x2="150" y2="240" stroke="#141310" stroke-width="1.5"/>'
+    + "</svg>";
+}
+function roomSVG() {
+  return '<svg viewBox="0 0 340 170" width="340" xmlns="http://www.w3.org/2000/svg">'
+    + '<rect x="20" y="25" width="300" height="105" fill="none" stroke="#141310" stroke-width="2"/>'
+    + '<circle cx="20" cy="36" r="6" fill="#141310"/><text x="32" y="40" font-size="16" font-family="Georgia, serif">S</text>'
+    + '<circle cx="320" cy="119" r="6" fill="#141310"/><text x="300" y="112" font-size="16" font-family="Georgia, serif">F</text>'
+    + '<text x="150" y="152" font-size="14" font-family="Georgia, serif">30 feet</text>'
+    + '<text x="330" y="80" font-size="14" font-family="Georgia, serif">12 ft</text>'
+    + "</svg>";
+}
+function diagramHTML(d) {
+  if (!d) return "";
+  if (d.type === "grid") return gridSVG(d.cols, d.rows);
+  if (d.type === "dots") return dotsSVG(d.cols, d.rows);
+  if (d.type === "board") return boardSVG();
+  if (d.type === "triangle") return triangleSVG();
+  if (d.type === "room") return roomSVG();
+  return "";
+}
+
+/* ---------- Puzzles: retold in our own words, answers verified ---------- */
+var PUZZLES = [
+  { id: "a1", section: "Arithmetical & Algebraical", title: "The Cyclic Number", input: "decimal",
+    text: "Find a six-figure number such that when it is multiplied by 2, 3, 4, 5 and 6, the answer in each case contains exactly the same six digits, only rearranged.",
+    accepted: ["142857"], solution: "142857 is the repeating part of 1/7. Multiply it by 2, 3, 4, 5 or 6 and the digits simply rotate." },
+  { id: "a2", section: "Arithmetical & Algebraical", title: "One to a Hundred", input: "decimal",
+    text: "Add together every whole number from 1 to 100. What is the total?",
+    accepted: ["5050"], solution: "Pair 1 with 100, 2 with 99, and so on — 50 pairs of 101, giving 50 × 101 = 5050." },
+  { id: "a3", section: "Arithmetical & Algebraical", title: "The Page Numbers", input: "decimal",
+    text: "A book has its pages numbered from 1 to 300. How many individual digits were used to print all the page numbers?",
+    accepted: ["792"], solution: "Pages 1–9 use 9 digits, 10–99 use 180, and 100–300 use 603. Total: 9 + 180 + 603 = 792." },
+  { id: "a4", section: "Arithmetical & Algebraical", title: "The Egg Basket", input: "decimal",
+    text: "A woman carries eggs to market. Counted in twos, threes, fours, fives and sixes, there is always one left over. Counted in sevens, none are left over. What is the smallest number of eggs she could have?",
+    accepted: ["301"], solution: "The number must be one more than a multiple of 60, and a multiple of 7. The smallest such number is 301." },
+  { id: "a5", section: "Arithmetical & Algebraical", title: "Father and Son", input: "decimal",
+    text: "A father is three times as old as his son. In fifteen years he will be only twice as old. How old is the son now?",
+    accepted: ["15", "15 years"], solution: "If the son is x, then 3x + 15 = 2(x + 15), so x = 15." },
+  { id: "a6", section: "Arithmetical & Algebraical", title: "The Stamps", input: "decimal",
+    text: "A post office sells only 3-cent and 5-cent stamps. What is the largest sum of money that cannot be made up with these stamps?",
+    accepted: ["7", "7 cents"], solution: "Every amount above 7 can be made: 8 = 3+5, 9 = 3+3+3, 10 = 5+5, and then add 3s. But 7 cannot." },
+  { id: "a7", section: "Arithmetical & Algebraical", title: "The Two-Digit Number", input: "decimal",
+    text: "The digits of a two-figure number add up to 9. Reverse the digits and the new number is 27 more than the old one. What was the original number?",
+    accepted: ["36"], solution: "36 reversed is 63, and 63 − 36 = 27, while 3 + 6 = 9." },
+  { id: "a8", section: "Arithmetical & Algebraical", title: "All Different Digits", input: "decimal",
+    text: "How many three-figure numbers have all three digits different?",
+    accepted: ["648"], solution: "9 choices for the first digit (not zero), 9 for the second, 8 for the third: 9 × 9 × 8 = 648." },
+  { id: "a9", section: "Arithmetical & Algebraical", title: "The Taps", input: "text",
+    text: "One tap fills a tank in 3 hours, another in 5 hours. Working together, how long do they take? Give the time in hours and minutes, or as a decimal.",
+    accepted: ["1 hour 52.5 minutes", "1.875 hours", "15/8 hours", "112.5 minutes", "112.5"], solution: "Together they fill 1/3 + 1/5 = 8/15 of the tank per hour, so the tank takes 15/8 hours = 1 hour 52.5 minutes." },
+  { id: "a10", section: "Arithmetical & Algebraical", title: "The Walk to Town", input: "decimal",
+    text: "A man walks to town at 4 miles an hour and back at 3 miles an hour. The whole outing takes 7 hours. How far is the town?",
+    accepted: ["12", "12 miles"], solution: "If the town is d miles away, d/4 + d/3 = 7, so 7d/12 = 7 and d = 12." },
+  { id: "a11", section: "Arithmetical & Algebraical", title: "The Magic Sum", input: "decimal",
+    text: "Arrange the numbers 1 to 9 in a 3×3 square so that every row, column and diagonal adds to the same total. What is that total?",
+    accepted: ["15"], solution: "The numbers 1 to 9 add to 45, and there are three rows sharing that total equally, so each row is 45 ÷ 3 = 15." },
+  { id: "a12", section: "Arithmetical & Algebraical", title: "The Handshakes", input: "decimal",
+    text: "Ten people meet, and everyone shakes hands with everyone else exactly once. How many handshakes are there?",
+    accepted: ["45"], solution: "The first person shakes 9 hands, the next 8, and so on: 9 + 8 + … + 1 = 45." },
+  { id: "a13", section: "Arithmetical & Algebraical", title: "The Snail", input: "decimal",
+    text: "A snail climbs a 10-foot wall. Each day it climbs 3 feet, and each night it slips back 2 feet. On which day does it reach the top?",
+    accepted: ["8", "8 days", "day 8"], solution: "After 7 days it stands at 7 feet. On the eighth day it climbs 3 feet and reaches the top before it can slip back." },
+  { id: "a14", section: "Arithmetical & Algebraical", title: "The Trains and the Fly", input: "decimal",
+    text: "Two stations are 100 miles apart. Two trains start towards each other at 40 and 60 miles an hour. A fly starts at the same moment from one train and flies back and forth at 80 miles an hour until the trains meet. How far does the fly travel?",
+    accepted: ["80", "80 miles"], solution: "The trains meet after 1 hour (100 ÷ 100), and in that hour the fly, at 80 miles an hour, covers 80 miles." },
+  { id: "a15", section: "Arithmetical & Algebraical", title: "The Rope Round the Earth", input: "text",
+    text: "Imagine a rope stretched tight round the Earth at the equator. Now lengthen it by 6 feet and hold it up evenly all round. Roughly how high above the ground will it stand?",
+    accepted: ["1 foot", "about 1 foot", "11.5 inches", "about a foot"], solution: "Adding 6 feet to the circumference adds 6 ÷ (2π), about 0.95 feet, to the radius — nearly a foot, all the way round." },
+  { id: "a16", section: "Arithmetical & Algebraical", title: "The Chimes", input: "decimal",
+    text: "A clock takes 5 seconds to strike 6 o’clock. How long does it take to strike 12 o’clock?",
+    accepted: ["11", "11 seconds"], solution: "Six strokes have five gaps between them, so each gap is 1 second. Twelve strokes have eleven gaps: 11 seconds." },
+  { id: "a17", section: "Arithmetical & Algebraical", title: "The Hands Meet", input: "decimal",
+    text: "How many times do the hands of a clock point in exactly the same direction in twelve hours?",
+    accepted: ["11"], solution: "The hands coincide once every 65 and 5/11 minutes, which happens 11 times in twelve hours — not 12, because the twelfth would be the start of the next cycle." },
+  { id: "a18", section: "Arithmetical & Algebraical", title: "The Three O’Clock Puzzle", input: "text",
+    text: "How many minutes past 3 o’clock do the hands first point in exactly the same direction? Give the answer as a mixed fraction or a decimal.",
+    accepted: ["16 4/11", "16.36", "16.3636"], solution: "The minute hand gains 5.5 degrees per minute on the hour hand, and at 3 o’clock it must gain 90 degrees: 90 ÷ 5.5 = 16 and 4/11 minutes." },
+  { id: "a19", section: "Arithmetical & Algebraical", title: "The Doubled Number", input: "decimal",
+    text: "A number is doubled, and 12 is added, giving 40. What was the number?",
+    accepted: ["14"], solution: "Work backwards: 40 − 12 = 28, and half of 28 is 14." },
+  { id: "g1", section: "Geometrical", title: "The Spider and the Fly", input: "decimal", diagram: { type: "room" },
+    text: "A room is 30 feet long, 12 feet wide and 12 feet high. A spider sits in the middle of one end wall, 1 foot below the ceiling. A fly sits in the middle of the opposite end wall, 1 foot above the floor. What is the shortest distance the spider must crawl to reach the fly?",
+    accepted: ["40", "40 feet"], solution: "Unfold the room flat and the shortest path becomes a straight line across a 32-by-24 triangle: the square root of (32² + 24²) = 40 feet." },
+  { id: "g2", section: "Geometrical", title: "The Rectangles", input: "decimal", diagram: { type: "grid", cols: 3, rows: 4 },
+    text: "How many rectangles of any size are there in a grid 3 squares wide and 4 squares tall?",
+    accepted: ["60"], solution: "Choose two of the 4 vertical lines and two of the 5 horizontal lines: 6 × 10 = 60." },
+  { id: "g3", section: "Geometrical", title: "The Triangle Count", input: "decimal", diagram: { type: "triangle" },
+    text: "A large triangle is divided by joining the midpoints of its sides, making 4 small triangles. How many triangles of all sizes are in the figure?",
+    accepted: ["5"], solution: "Four small triangles, plus the one large triangle that contains them: 5." },
+  { id: "g4", section: "Geometrical", title: "The Ladder", input: "decimal",
+    text: "A ladder 20 feet long stands with its foot 12 feet from a wall. How high up the wall does it reach?",
+    accepted: ["16", "16 feet"], solution: "By the right-angled triangle: the square root of (20² − 12²) = the square root of 256 = 16." },
+  { id: "g5", section: "Geometrical", title: "The Grid Paths", input: "decimal", diagram: { type: "dots", cols: 4, rows: 4 },
+    text: "Starting at the bottom-left dot of this 4×4 lattice, how many routes to the top-right dot go only right or up?",
+    accepted: ["20"], solution: "Every route is 3 rights and 3 ups in some order: 6! ÷ (3! × 3!) = 20." },
+  { id: "g6", section: "Geometrical", title: "The Doubled Square", input: "text",
+    text: "If the side of a square is doubled, by how many times does its area increase?",
+    accepted: ["4", "4 times"], solution: "Area depends on the square of the side, so doubling the side multiplies the area by 2² = 4." },
+  { id: "g7", section: "Geometrical", title: "The Painted Cube", input: "decimal",
+    text: "A 3×3×3 cube is painted all over, then cut into 27 small cubes. How many of the small cubes have no paint on them at all?",
+    accepted: ["1"], solution: "Only the single cube right in the centre escapes the paint." },
+  { id: "g8", section: "Geometrical", title: "The Two Squares", input: "decimal",
+    text: "One square has side 3, another side 4. Their areas added together make a square. What is its side?",
+    accepted: ["5"], solution: "9 + 16 = 25, and the square root of 25 is 5." },
+  { id: "c1", section: "Combinatorial", title: "The Committee", input: "decimal",
+    text: "How many different committees of 3 can be chosen from 10 people?",
+    accepted: ["120"], solution: "10 × 9 × 8 ÷ 6 = 120." },
+  { id: "c2", section: "Combinatorial", title: "The Four Digits", input: "decimal",
+    text: "How many four-figure numbers can be made from the digits 1, 2, 3 and 4, using each digit exactly once?",
+    accepted: ["24"], solution: "4 × 3 × 2 × 1 = 24." },
+  { id: "c3", section: "Combinatorial", title: "The Secret Code", input: "decimal",
+    text: "A code is made of 3 letters, each chosen from the 26 letters of the alphabet, and letters may repeat. How many different codes are possible?",
+    accepted: ["17576"], solution: "26 × 26 × 26 = 17,576." },
+  { id: "c4", section: "Combinatorial", title: "The Bookshelf", input: "decimal",
+    text: "In how many orders can 5 different books stand on a shelf?",
+    accepted: ["120"], solution: "5 × 4 × 3 × 2 × 1 = 120." },
+  { id: "l1", section: "Games & Logic", title: "The Wine and the Water", input: "text",
+    text: "A glass of wine and a glass of water hold equal amounts. A spoonful is carried from the wine to the water and stirred, then a spoonful of the mixture is carried back. Which glass now holds more of the other one’s liquid: the wine glass, the water glass, or are they equal?",
+    accepted: ["equal", "the same", "same", "neither", "equal amounts"], solution: "The amounts exchanged are exactly equal, so each glass ends up holding as much of the other’s liquid as the other does." },
+  { id: "l2", section: "Games & Logic", title: "The Broken Window", input: "text",
+    text: "A window is broken. A says B did it. B says C did it. C says: I did it. Only one of them is telling the truth. Who broke the window?",
+    accepted: ["B", "b did it"], solution: "If B did it, only A tells the truth. If A did it, nobody does; if C did it, two do. So B did it." },
+  { id: "l3", section: "Games & Logic", title: "The Three Boxes", input: "text",
+    text: "Three boxes are labelled Apples, Oranges, and Mixed — but every label is wrong. You may take one fruit from one box, without looking inside. From which box should you take it, so that you can then label all three correctly?",
+    accepted: ["mixed", "the mixed box", "the box labelled mixed"], solution: "Take from the box labelled Mixed: since its label is wrong it holds only one kind of fruit, and that tells you everything about the other two." },
+  { id: "l4", section: "Games & Logic", title: "The Three Doors", input: "text",
+    text: "You pick one of three doors. Behind one is a prize, behind the others nothing. The host, who knows where the prize is, opens a different door showing nothing, and offers you the chance to change your pick. Should you stay or switch?",
+    accepted: ["switch", "switch doors", "change"], solution: "Switch. Your first pick had a 1-in-3 chance; the prize is twice as likely to be behind the other unopened door." },
+  { id: "m1", section: "Matchstick & Domino", title: "The Matchstick Squares", input: "decimal", diagram: { type: "grid", cols: 3, rows: 3 },
+    text: "Matches are laid out to form this 3×3 grid of small squares. How many squares of all sizes can you count?",
+    accepted: ["14"], solution: "9 small squares, 4 squares of 2×2, and 1 of 3×3: 14." },
+  { id: "m2", section: "Matchstick & Domino", title: "The Matchstick Equation", input: "text",
+    text: "Move a single matchstick to make this equation true: XI + I = X. Type the corrected equation.",
+    accepted: ["XI-I=X"], solution: "Move one match from the plus sign to make it a minus: XI − I = X." },
+  { id: "m3", section: "Matchstick & Domino", title: "The Domino Dots", input: "decimal",
+    text: "A full set of dominoes runs from double-blank to double-six. How many dots are there on all the dominoes together?",
+    accepted: ["168"], solution: "Each number from 0 to 6 appears 8 times across the set, so the total is 8 × (0+1+2+3+4+5+6) = 168." },
+  { id: "h1", section: "Chessboard", title: "The Chessboard Squares", input: "decimal", diagram: { type: "board" },
+    text: "How many squares of all sizes are there on an ordinary 8×8 chessboard?",
+    accepted: ["204"], solution: "64 of 1×1, 49 of 2×2, 36, 25, 16, 9, 4 and 1: 204." },
+  { id: "h2", section: "Chessboard", title: "The Knights", input: "decimal", diagram: { type: "board" },
+    text: "What is the largest number of knights that can be placed on a chessboard so that none attacks another?",
+    accepted: ["32"], solution: "Put a knight on every square of one colour — 32 knights, and no knight attacks a square of its own colour." }
+];
+
+/* ---------- Menu: the whole book, nothing hidden ---------- */
+var sections = [];
+PUZZLES.forEach(function (p) {
+  if (sections.indexOf(p.section) === -1) sections.push(p.section);
+});
+function renderMenu() {
+  var solved = loadSolved();
+  var totalSolved = PUZZLES.filter(function (p) { return solved[p.id]; }).length;
+  document.getElementById("progress").textContent = "Solved " + totalSolved + " of " + PUZZLES.length;
+  var html = "";
+  sections.forEach(function (sec) {
+    var list = PUZZLES.filter(function (p) { return p.section === sec; });
+    var sCount = list.filter(function (p) { return solved[p.id]; }).length;
+    html += '<div class="section"><h2>' + sec + ' <span class="seccount">· ' + sCount + " of " + list.length + " solved</span></h2>";
+    list.forEach(function (p) {
+      var n = PUZZLES.indexOf(p) + 1;
+      html += '<button type="button" class="puzzle-row" data-i="' + (n - 1) + '">'
+        + '<span class="num">' + n + '.</span><span>' + p.title + '</span>'
+        + '<span class="tick' + (solved[p.id] ? "" : " no") + '">✓</span></button>';
+    });
+    html += "</div>";
+  });
+  document.getElementById("menu").innerHTML = html;
+  document.querySelectorAll(".puzzle-row").forEach(function (b) {
+    b.addEventListener("click", function () { showPuzzle(parseInt(b.getAttribute("data-i"), 10)); });
+  });
+}
+
+/* ---------- Puzzle view ---------- */
+var current = 0;
+function showPuzzle(i) {
+  current = i;
+  var p = PUZZLES[i];
+  var n = i + 1;
+  document.getElementById("menu-view").style.display = "none";
+  document.getElementById("puzzle-view").style.display = "block";
+  var html = '<div class="puzzle-head"><div class="sec">' + p.section + " · Puzzle " + n + " of " + PUZZLES.length + "</div>"
+    + "<h2>" + p.title + "</h2>"
+    + (isSolved(p.id) ? '<span class="solved-badge">✓ Solved</span>' : "") + "</div>";
+  if (p.diagram) html += '<div class="diagram">' + diagramHTML(p.diagram) + "</div>";
+  html += '<div class="puzzle-text">' + p.text + "</div>"
+    + '<div class="answer"><input type="text" id="ans" inputmode="' + (p.input === "decimal" ? "decimal" : "text")
+    + '" placeholder="Type your answer…" autocomplete="off"></div>'
+    + '<button type="button" class="btn" id="check-btn">Check answer</button>'
+    + '<button type="button" class="btn secondary" id="sol-btn">Solution</button>'
+    + '<div class="msg" id="msg"></div>'
+    + '<div class="solution" id="sol-box"><h3>Solution</h3><p>' + p.solution + "</p></div>";
+  document.getElementById("puzzle-box").innerHTML = html;
+  document.getElementById("prev-btn").style.visibility = i > 0 ? "visible" : "hidden";
+  document.getElementById("next-btn").style.visibility = i < PUZZLES.length - 1 ? "visible" : "hidden";
+  document.getElementById("check-btn").addEventListener("click", checkCurrent);
+  document.getElementById("ans").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") checkCurrent();
+  });
+  document.getElementById("sol-btn").addEventListener("click", function () {
+    document.getElementById("sol-box").classList.toggle("open");
+  });
+  window.scrollTo(0, 0);
+}
+function checkCurrent() {
+  var p = PUZZLES[current];
+  var input = document.getElementById("ans").value;
+  var msg = document.getElementById("msg");
+  if (checkAnswer(input, p.accepted)) {
+    var first = !isSolved(p.id);
+    markSolved(p.id);
+    msg.className = "msg ok";
+    msg.textContent = "✓ Correct — solved.";
+    if (first) {
+      var head = document.querySelector(".puzzle-head");
+      head.innerHTML += '<br><span class="solved-badge">✓ Solved</span>';
+    }
+  } else {
+    msg.className = "msg no";
+    msg.textContent = "Not quite — try again.";
+  }
+}
+document.getElementById("back-link").addEventListener("click", function (e) {
+  e.preventDefault();
+  document.getElementById("puzzle-view").style.display = "none";
+  document.getElementById("menu-view").style.display = "block";
+  renderMenu();
+  window.scrollTo(0, 0);
+});
+document.getElementById("prev-btn").addEventListener("click", function () {
+  if (current > 0) showPuzzle(current - 1);
+});
+document.getElementById("next-btn").addEventListener("click", function () {
+  if (current < PUZZLES.length - 1) showPuzzle(current + 1);
+});
+
+renderMenu();
+</script>
+</body>
+</html>
